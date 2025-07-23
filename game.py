@@ -57,10 +57,10 @@ print(f"Sprite 1 size: {SPRITES[0].get_size()}")
 print(f"Sprite 2 size: {SPRITES[1].get_size()}")
 
 try:    # sounds (optional)
-    snd_light = pygame.mixer.Sound("punch_light.wav.mp3")
-    snd_heavy = pygame.mixer.Sound("punch_heavy.wav.mp3")
-    snd_jump  = pygame.mixer.Sound("jump.wav.mp3")
-    snd_hit   = pygame.mixer.Sound("hit.wav.mp3")
+    snd_light = pygame.mixer.Sound("punch_light.mp3")
+    snd_heavy = pygame.mixer.Sound("punch_heavy.mp3")
+    snd_jump  = pygame.mixer.Sound("jump.mp3")
+    snd_hit   = pygame.mixer.Sound("hit.mp3")
 except:
     snd_light = snd_heavy = snd_jump = snd_hit = None
 
