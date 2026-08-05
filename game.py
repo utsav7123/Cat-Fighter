@@ -68,15 +68,21 @@ SPRITES = [
 print(f"Sprite 1 size: {SPRITES[0].get_size()}")
 print(f"Sprite 2 size: {SPRITES[1].get_size()}")
 
-try:    # sounds (optional)
-    snd_light = pygame.mixer.Sound(resource_path("punch_light.mp3"))
-    snd_heavy = pygame.mixer.Sound(resource_path("punch_heavy.mp3"))
-    snd_jump  = pygame.mixer.Sound(resource_path("jump.mp3"))
-    snd_hit   = pygame.mixer.Sound(resource_path("hit.mp3"))
-    snd_mouse = pygame.mixer.Sound(resource_path("mice.mp3"))
-    snd_eat = pygame.mixer.Sound(resource_path("eating.mp3"))
-except:
-    snd_light = snd_heavy = snd_jump = snd_hit = snd_mouse = snd_eat = None
+def load_sound(filename):
+    """Load one optional sound without disabling the other effects."""
+    try:
+        return pygame.mixer.Sound(resource_path(filename))
+    except (OSError, pygame.error) as error:
+        print(f"Couldn't load sound effect '{filename}': {error}")
+        return None
+
+
+snd_light = load_sound("punch_light.mp3")
+snd_heavy = load_sound("punch_heavy.mp3")
+snd_jump = load_sound("jump.mp3")
+snd_hit = load_sound("hit.mp3")
+snd_mouse = load_sound("mice.mp3")
+snd_eat = load_sound("eating.mp3")
 
 clock = pygame.time.Clock()
 font  = pygame.font.SysFont("consolas", 32)

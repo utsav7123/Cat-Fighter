@@ -5,7 +5,7 @@ a = Analysis(
     ['game.py'],
     pathex=[],
     binaries=[],
-    datas=[('cat1.png', '.'), ('cat2.png', '.'), ('bakground.jpg', '.'), ('bgm.mp3', '.'), ('hit.mp3', '.'), ('jump.mp3', '.'), ('punch_heavy.mp3', '.'), ('punch_light.mp3', '.')],
+    datas=[('cat1.png', '.'), ('cat2.png', '.'), ('bakground.jpg', '.'), ('bgm.mp3', '.'), ('hit.mp3', '.'), ('jump.mp3', '.'), ('punch_heavy.mp3', '.'), ('punch_light.mp3', '.'), ('mice.mp3', '.'), ('eating.mp3', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
