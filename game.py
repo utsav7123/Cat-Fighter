@@ -135,22 +135,14 @@ class Fighter:
             self.rect.centerx + self.facing * reach//2 - reach//2,
             self.rect.y + 20, reach, 40
         )
-        if r.colliderect(opponent.rect) and opponent.take_damage(dmg):
+        if r.colliderect(opponent.rect) and not opponent.dead:
+            opponent.health -= dmg
+            opponent.hurt_timer = 18
+            opponent.frame = 3
+            if snd_hit: snd_hit.play()
             if dmg == 10 and snd_light: snd_light.play()
             elif snd_heavy: snd_heavy.play()
             opponent.rect.x += self.facing * 10
-
-    # damage -------------------------------------------------
-    def take_damage(self, amount):
-        if self.dead or self.winner or amount <= 0:
-            return False
-
-        self.health = max(0, self.health - amount)
-        self.hurt_timer = 18
-        self.frame = 3
-        if snd_hit:
-            snd_hit.play()
-        return True
 
     # physics -------------------------------------------------
     def physics(self):
@@ -208,6 +200,10 @@ class Fighter:
                     self.frame = 0
             self.handle_input(keys, opponent)
             self.physics()
+            if self.health <= 0:
+                self.health = 0
+                self.dead = True
+                self.frame = 4
 
     # draw -------------------------------------------------
     def draw(self, surf):
@@ -226,6 +222,13 @@ class Fighter:
     # Add to Fighter class
     def ai_control(self, opponent):
         if self.dead or self.winner:
+            return
+            
+        # Check health and update state
+        if self.health <= 0:
+            self.health = 0
+            self.dead = True
+            self.frame = 4
             return
             
         # Basic AI logic
@@ -391,40 +394,7 @@ def draw_menu(surf):
 def is_anyone_eating(players):
     return any(p.eating > 0 for p in players)
 
-def resolve_match(p1, p2, current_result):
-    """Resolve a knockout once, after both fighters have updated for the frame."""
-    if current_result is not None:
-        return current_result
-
-    p1_knocked_out = p1.health <= 0
-    p2_knocked_out = p2.health <= 0
-
-    if not p1_knocked_out and not p2_knocked_out:
-        return None
-
-    if p1_knocked_out:
-        p1.health = 0
-        p1.dead = True
-        p1.winner = False
-        p1.frame = 4
-
-    if p2_knocked_out:
-        p2.health = 0
-        p2.dead = True
-        p2.winner = False
-        p2.frame = 4
-
-    if p1_knocked_out and p2_knocked_out:
-        return "draw"
-
-    winner = p2 if p1_knocked_out else p1
-    winner.winner = True
-    winner.frame = 5
-    winner.anim_timer = max(winner.anim_timer, 30)
-    return "player2" if p1_knocked_out else "player1"
-
 p1, p2 = reset()
-match_result = None
 
 # Add after p1, p2 = reset()
 current_mouse = None
@@ -437,17 +407,14 @@ while True:
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_F1:
                 p1, p2 = reset()
-                match_result = None
                 GAME_STATE = "menu"
             elif GAME_STATE == "menu":
                 if e.key == pygame.K_1:
                     GAME_STATE = "1player"
                     p1, p2 = reset()
-                    match_result = None
                 elif e.key == pygame.K_2:
                     GAME_STATE = "2player"
                     p1, p2 = reset()
-                    match_result = None
 
     # Draw background
     WIN.blit(BG_IMG, (0, 0))
@@ -457,37 +424,49 @@ while True:
     else:
         keys = pygame.key.get_pressed()
         
-        if match_result is None:
-            # Only allow updates if no one is eating
-            if not is_anyone_eating([p1, p2]):
+        # Only allow updates if no one is eating
+        if not is_anyone_eating([p1, p2]):
+            p1.update(keys, p2)
+            if GAME_STATE == "2player":
+                p2.update(keys, p1)
+            else:  # 1player mode
+                p2.ai_control(p1)
+                p2.physics()
+        else:
+            # If someone is eating, only update eating animations
+            if p1.eating > 0:
                 p1.update(keys, p2)
-                if GAME_STATE == "2player":
-                    p2.update(keys, p1)
-                else:  # 1player mode
-                    p2.ai_control(p1)
-                    p2.physics()
-            else:
-                # If someone is eating, only update eating animations
-                if p1.eating > 0:
-                    p1.update(keys, p2)
-                if p2.eating > 0:
-                    p2.update(keys, p1)
+            if p2.eating > 0:
+                p2.update(keys, p1)
 
-            # Resolve both health values together, once per frame.
-            match_result = resolve_match(p1, p2, match_result)
-            if match_result is not None and current_mouse:
-                if snd_mouse:
-                    snd_mouse.stop()
+        # winner
+        if p1.dead and not p2.winner:
+            p2.winner = True
+            p2.frame = 5
+            if p2.anim_timer <= 0:
+                p2.anim_timer = 30
+            # Winner eats mouse if present
+            if current_mouse and not p2.eating:
+                p2.eat_mouse()
+                current_mouse = None
+        if p2.dead and not p1.winner:
+            p1.winner = True
+            p1.frame = 5
+            if p1.anim_timer <= 0:
+                p1.anim_timer = 30
+            # Winner eats mouse if present
+            if current_mouse and not p1.eating:
+                p1.eat_mouse()
                 current_mouse = None
 
         # Mouse spawning
-        if match_result is None and not current_mouse and not p1.eating and not p2.eating:
+        if not current_mouse and not p1.eating and not p2.eating and not p1.winner and not p2.winner:
             if random.random() < MOUSE_SPAWN_CHANCE:
                 from_right = bool(random.randrange(2))
                 current_mouse = Mouse(from_right)
         
         # Mouse update
-        if match_result is None and current_mouse:
+        if current_mouse:
             if current_mouse.update():
                 current_mouse = None
             else:
@@ -522,13 +501,9 @@ while True:
         health_bar(WIN, 20, 20, p1.health)
         health_bar(WIN, WIN_W-220, 20, p2.health)
 
-        if match_result is not None:
-            if match_result == "draw":
-                message = "DOUBLE K.O. - DRAW  F1 = restart"
-            else:
-                winner_name = "Player 1" if match_result == "player1" else "Player 2"
-                message = f"{winner_name} wins!  F1 = restart"
-            txt = font.render(message, True, BLACK)
+        if p1.winner or p2.winner:
+            w = "Player 1" if p1.winner else "Player 2"
+            txt = font.render(f"{w} wins!  F1 = restart", True, BLACK)
             WIN.blit(txt, txt.get_rect(center=(WIN_W//2, WIN_H//2)))
 
     # keep cats inside screen
